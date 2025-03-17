@@ -1,0 +1,512 @@
+/* Global document selection prevention */
+body, html, #root, .word-finder-game {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@keyframes bounce-in {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes flip-in {
+  0% {
+    transform: rotateX(0);
+  }
+  45% {
+    transform: rotateX(90deg);
+  }
+  55% {
+    transform: rotateX(90deg);
+  }
+  100% {
+    transform: rotateX(0);
+  }
+}
+
+@keyframes shake {
+  10%, 90% {
+    transform: translateX(-2px);
+  }
+  20%, 80% {
+    transform: translateX(3px);
+  }
+  30%, 50%, 70% {
+    transform: translateX(-5px);
+  }
+  40%, 60% {
+    transform: translateX(5px);
+  }
+}
+
+@keyframes color-change {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes celebrate {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-bounce-in {
+  animation: bounce-in 100ms forwards;
+}
+
+.animate-flip-in {
+  animation: flip-in 500ms ease forwards;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+.animate-shake {
+  animation: shake 600ms cubic-bezier(.36,.07,.19,.97) both;
+}
+
+.key-press {
+  transition: all 0.1s ease;
+}
+
+.key-press:active {
+  transform: scale(0.95);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.animate-color-change {
+  animation: color-change 0.2s ease-in-out;
+}
+
+.animate-pop {
+  animation: pop 0.2s ease-in-out;
+}
+
+.animate-celebrate {
+  animation: celebrate 500ms ease infinite;
+}
+
+.premium-gradient {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+}
+
+.premium-border {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.premium-text-gradient {
+  background: linear-gradient(to right, #fbbf24, #f97316);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Revert responsive utility classes */
+.responsive-container {
+  width: 100%;
+  margin: 0 auto;
+  padding: 1rem;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.responsive-board {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-height: 667px) {
+  .responsive-board {
+    gap: 0.25rem;
+    padding: 0.25rem;
+  }
+}
+
+/* Media query for hover effects only on devices that support hover */
+@media (hover: hover) {
+  button:hover:not(:disabled) {
+    opacity: 0.8;
+  }
+}
+
+/* Set up variables for consistency */
+:root {
+  --board-width: min(300px, 85vw);
+  --board-height: min(360px, 60vh);
+  --tile-gap: 6px;
+  --tile-size: calc((var(--board-width) - (var(--tile-gap) * 6)) / 5);
+  
+  /* Light mode colors */
+  --bg-primary: #ffffff;
+  --text-primary: #1a1a1b;
+  --border-empty: #d3d6da;
+  --border-filled: #878a8c;
+  --key-bg: #d3d6da;
+  --key-text: #1a1a1b;
+  --correct-bg: #6aaa64;
+  --correct-border: #6aaa64;
+  --present-bg: #c9b458;
+  --present-border: #c9b458;
+  --absent-bg: #787c7e;
+  --absent-border: #787c7e;
+}
+
+/* Mobile-specific variables */
+@media (max-width: 480px) {
+  :root {
+    --board-width: min(275px, 85vw);
+    --board-height: min(330px, 55vh);
+    --tile-gap: 5px;
+    --tile-size: calc((var(--board-width) - (var(--tile-gap) * 6)) / 5);
+  }
+}
+
+/* Small mobile devices */
+@media (max-width: 360px) {
+  :root {
+    --board-width: 85vw;
+    --board-height: 50vh;
+    --tile-gap: 4px;
+    --tile-size: calc((var(--board-width) - (var(--tile-gap) * 6)) / 5);
+  }
+}
+
+/* Dark mode colors */
+.dark {
+  --bg-primary: #121213;
+  --text-primary: #d7dadc;
+  --border-empty: #3a3a3c;
+  --border-filled: #565758;
+  --key-bg: #818384;
+  --key-text: #d7dadc;
+  --correct-bg: #538d4e;
+  --correct-border: #538d4e;
+  --present-bg: #b59f3b;
+  --present-border: #b59f3b;
+  --absent-bg: #3a3a3c;
+  --absent-border: #3a3a3c;
+}
+
+/* Custom pressed state for touch devices */
+.pressed {
+  transform: scale(0.95);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Disable text selection on the keyboard */
+.keyboard {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Game board responsive dimensions */
+.board-tile {
+  font-size: clamp(1rem, 3.5vw, 1.5rem);
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tile-size);
+  height: var(--tile-size);
+  border-radius: 6px;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  transition: transform 0.15s;
+  touch-action: manipulation;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.12);
+  -webkit-touch-callout: none;
+  pointer-events: auto;
+  cursor: default !important;
+  /* Disable text selection */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Empty state styling */
+.empty-tile {
+  border: 2px solid var(--border-empty);
+}
+
+/* Typed letter styling (before submission) */
+.typed-letter {
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+/* Board tile animations */
+.animate-bounce-in {
+  animation: bounceIn 0.1s ease-in-out forwards;
+}
+
+.animate-flip-in {
+  animation: flipIn 0.5s ease-in-out forwards;
+  transform-style: preserve-3d;
+}
+
+.animate-shake {
+  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+/* Empty tile styles */
+.empty-tile {
+  border-color: var(--border-empty);
+  background: transparent;
+}
+
+/* Typed letter styles */
+.typed-letter {
+  border-color: var(--border-filled);
+  color: var(--text-primary);
+}
+
+/* Key press effects */
+.key-press {
+  transition: all 0.1s ease;
+}
+
+.key-press:active, 
+.key-press.pressed {
+  transform: scale(0.95);
+  opacity: 0.8;
+}
+
+/* Keyboard container */
+.keyboard-container {
+  margin-top: 0;
+  padding-top: 0;
+  padding-bottom: 0.25rem;
+  border-radius: 0.5rem;
+  width: 100%;
+  max-width: 480px;
+  touch-action: manipulation;
+}
+
+/* Keyboard wrapper to position it closer to the board */
+.keyboard-wrapper {
+  margin-top: -1rem;
+  position: relative;
+  z-index: 10;
+}
+
+/* Desktop-specific styles for the Enter key */
+@media (min-width: 640px) {
+  .desktop-enter-key {
+    position: relative;
+    cursor: pointer !important;
+    user-select: none !important;
+    pointer-events: auto !important;
+  }
+  
+  /* Ensure Enter key has proper hover state on desktop */
+  .desktop-enter-key:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Ensure Enter key has proper active state on desktop */
+  .desktop-enter-key:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes flipIn {
+  0% {
+    transform: rotateX(0);
+  }
+  50% {
+    transform: rotateX(90deg);
+  }
+  100% {
+    transform: rotateX(0);
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-5px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(5px);
+  }
+}
+
+/* Board container with transform */
+.board-scale-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: var(--board-width);
+  margin: 0 auto;
+  padding: calc(var(--tile-gap) * 1.5);
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  cursor: default;
+}
+
+/* Board container styling */
+.board-container {
+  margin: 0 auto;
+  border-radius: 8px;
+  padding: var(--tile-gap);
+  transition: all 0.3s ease;
+  max-width: var(--board-width);
+  max-height: var(--board-height);
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  cursor: default;
+}
+
+/* Mobile-optimized animation durations */
+@media (max-width: 480px) {
+  .animate-flip-in {
+    animation-duration: 400ms;
+  }
+  
+  .animate-shake {
+    animation-duration: 500ms;
+  }
+}
+
+/* Disable double-tap zoom on touch devices */
+.board-container, .keyboard-container, .board-tile, button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Specific mobile touch styles */
+@media (pointer: coarse) {
+  .board-tile, button {
+    cursor: pointer;
+  }
+  
+  .key-press:active {
+    transform: scale(0.92);
+    opacity: 0.85;
+  }
+}
+
+/* Enhance focus styles for keyboard accessibility */
+.board-tile:focus, button:focus {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
+/* Prevent text selection on tiles */
+.board-tile, .keyboard-container button {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Utility class to prevent selection */
+.no-select {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Desktop specific cursor control */
+@media (pointer: fine) {
+  .board-container,
+  .board-container *,
+  .board-scale-container,
+  .board-scale-container *,
+  .word-finder-game .board-tile,
+  .board-tile[role="button"],
+  .board-container [role="button"] {
+    cursor: default !important;
+  }
+  
+  /* Force default cursor even when focused or active */
+  .board-tile:hover,
+  .board-tile:focus,
+  .board-tile:active,
+  [role="button"]:hover,
+  [role="button"]:focus,
+  [role="button"]:active {
+    cursor: default !important;
+  }
+  
+  /* Override standard button behavior for game tiles */
+  .word-finder-game [role="button"] {
+    cursor: default !important;
+    pointer-events: auto;
+  }
+}

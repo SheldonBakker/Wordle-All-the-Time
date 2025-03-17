@@ -1,0 +1,15 @@
+# BEGIN CUSTOM REDIRECTS
+RewriteEngine On
+
+# Handle SPA Routing (React Router)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.html [L]
+
+# Ensure images and other assets are served correctly
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^(.*)$ $1 [L]
+# END CUSTOM REDIRECTS
+
+# Set Content Security Policy to allow framing from your domain
+Header set Content-Security-Policy "frame-ancestors 'self' https://shikkidesign.co.za"

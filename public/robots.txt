@@ -1,0 +1,27 @@
+# robots.txt for shikkidesign.co.za
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /games
+Allow: /games/word-finder
+
+# Prevent access to potential sensitive directories
+Disallow: /api/
+Disallow: /admin/
+Disallow: /private/
+Disallow: /temp/
+
+# Allow crawling of static assets
+Allow: /*.js$
+Allow: /*.css$
+Allow: /*.png$
+Allow: /*.jpg$
+Allow: /*.gif$
+Allow: /*.webp$
+Allow: /*.ico$
+
+# Sitemap location
+Sitemap: https://shikkidesign.co.za/sitemap.xml
+
+# Crawl-delay directive (optional)
+# Crawl-delay: 10 

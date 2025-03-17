@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",                                  // Set ES2020 as the target (or ESNext)
+    "useDefineForClassFields": true,                     // Enable strict handling for class fields
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],            // Include DOM and iterable types for browser support
+    "module": "ESNext",                                  // Use ESNext module syntax
+    "skipLibCheck": true,                                // Skip type checking of declaration files
+    "moduleResolution": "bundler",                       // Resolves modules in bundler mode (for Vite)
+    "allowImportingTsExtensions": true,                  // Allow importing files with TypeScript extensions
+    "isolatedModules": true,                             // Ensure each file is treated as a separate module
+    "moduleDetection": "force",                          // Force module detection
+    "noEmit": true,                                      // Do not emit compiled output (handled by Vite)
+    "jsx": "react-jsx",                                  // Use the modern JSX runtime for React
+
+    /* Linting */
+    "strict": true,                                      // Enable strict type-checking
+    "noUnusedLocals": true,                              // Error on unused local variables
+    "noUnusedParameters": true,                          // Error on unused function parameters
+    "noFallthroughCasesInSwitch": true,                  // Prevent fallthrough cases in switch statements
+    "esModuleInterop": true,                             // Ensure ES module interop
+    "forceConsistentCasingInFileNames": true             // Enforce case consistency in imports
+  },
+  "include": ["src"],                                    // Include the source directory
+  "exclude": ["node_modules"]                            // Exclude the node_modules directory
+}

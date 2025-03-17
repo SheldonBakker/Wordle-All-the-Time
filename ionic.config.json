@@ -1,0 +1,7 @@
+{
+  "name": "shikki",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "custom"
+}
