@@ -1,12 +1,16 @@
 import React from "react";
 
 interface InstructionsModalProps {
+  isOpen: boolean;
   onClose: () => void;
 }
 
 const InstructionsModal: React.FC<InstructionsModalProps> = ({
+  isOpen,
   onClose,
 }) => {
+  if (!isOpen) return null;
+  
   return (
     <div
       className="fixed inset-0 flex items-center justify-center bg-black/60 z-50"
@@ -36,7 +40,7 @@ const InstructionsModal: React.FC<InstructionsModalProps> = ({
           </p>
           
           <p>
-            Each guess must be a valid 5-letter word. Hit the enter button to submit.
+            Each guess must be a valid 5-letter word found in the dictionary. Hit the enter button to submit.
           </p>
           
           <p>

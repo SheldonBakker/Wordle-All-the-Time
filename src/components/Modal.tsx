@@ -40,6 +40,10 @@ const GameModal: React.FC<ModalProps> = ({
             ? "You guessed the word!"
             : `The word was: ${targetWord}`}
         </p>
+        
+        <p className="text-center text-sm mb-4 text-white opacity-80">
+          Any 5-letter word in the dictionary is valid! Words are checked against a dictionary API.
+        </p>
 
         <div className="flex flex-col gap-4">
           <button

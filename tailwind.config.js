@@ -4,6 +4,34 @@ module.exports = {
   darkMode: 'class', // Enable class-based dark mode
   theme: {
     extend: {
+      colors: {
+        primary: {
+          DEFAULT: '#6aaa64',
+          dark: '#538d4e',
+        },
+        secondary: {
+          DEFAULT: '#c9b458',
+          dark: '#b59f3b',
+        },
+        game: {
+          correct: {
+            DEFAULT: '#6aaa64',
+            dark: '#538d4e',
+          },
+          present: {
+            DEFAULT: '#c9b458',
+            dark: '#b59f3b',
+          },
+          absent: {
+            DEFAULT: '#787c7e',
+            dark: '#3a3a3c',
+          },
+          background: {
+            light: '#f9fafb',
+            dark: '#111827',
+          },
+        },
+      },
       keyframes: {
         shake: {
           "0%, 100%": { transform: "translateX(0)" },
@@ -33,12 +61,21 @@ module.exports = {
             transform: "translateY(5px)",
           },
         },
+        'confetti-fall': {
+          "0%": { 
+            transform: "translateY(-100vh) rotate(0deg)" 
+          },
+          "100%": { 
+            transform: "translateY(100vh) rotate(720deg)" 
+          },
+        },
       },
       animation: {
         shake: "shake 0.5s ease-in-out",
         pop: "pop 0.5s ease-in-out", // Added pop animation for the letters
         "gradient-xy": "gradient-xy 15s ease infinite",
         wave: "wave 10s ease-in-out infinite",
+        'confetti-fall': "confetti-fall 5s linear infinite",
       },
       backgroundColor: {
         dark: '#121213', // Dark mode background color

@@ -10,8 +10,12 @@ import {
   checkWordExists,
   resetGameState,
   GameState,
+  getStorageStatusMessage,
+  isLocalStorageAvailable,
 } from "./utils/gameUtils";
 import "./styles/anime.css";
+import { useSupabase } from "../supabase/SupabaseContext";
+import { saveGameResult } from "../supabase/statsUtils";
 
 // ADDED: Define the Confetti component
 const Confetti: React.FC = () => {
@@ -43,52 +47,36 @@ const Confetti: React.FC = () => {
 const MAX_ATTEMPTS = 6;
 const WORD_LENGTH = 5;
 
-// Dark mode toggle component
-const DarkModeToggle: React.FC<{ 
-  isDarkMode: boolean; 
-  toggleDarkMode: () => void 
-}> = ({ isDarkMode, toggleDarkMode }) => {
-  return (
-    <button
-      onClick={toggleDarkMode}
-      className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-      aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-    >
-      {isDarkMode ? (
-        // Sun icon for light mode
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="5"></circle>
-          <line x1="12" y1="1" x2="12" y2="3"></line>
-          <line x1="12" y1="21" x2="12" y2="23"></line>
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-          <line x1="1" y1="12" x2="3" y2="12"></line>
-          <line x1="21" y1="12" x2="23" y2="12"></line>
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-        </svg>
-      ) : (
-        // Moon icon for dark mode
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-        </svg>
-      )}
-    </button>
-  );
-};
-
 // SaveStatus component to show when the game is saved
-const SaveStatus: React.FC<{ visible: boolean }> = ({ visible }) => {
+const SaveStatus: React.FC<{ visible: boolean; message?: string; isError?: boolean }> = ({ 
+  visible, 
+  message = "Game progress saved",
+  isError = false
+}) => {
   if (!visible) return null;
   
   return (
-    <div className="save-status fixed bottom-4 right-4 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 py-1 px-3 rounded-md text-sm transition-opacity duration-500 opacity-70">
-      Game progress saved
+    <div className={`save-status fixed bottom-4 right-4 py-1 px-3 rounded-md text-sm transition-opacity duration-500 opacity-70 ${
+      isError 
+        ? "bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200" 
+        : "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
+    }`}>
+      {message}
     </div>
   );
 };
 
-const Board: React.FC = () => {
+interface BoardProps {
+  showInstructions?: boolean;
+  onInstructionsShown?: () => void;
+  triggerNewGame?: boolean;
+}
+
+const Board: React.FC<BoardProps> = ({ 
+  showInstructions = false, 
+  onInstructionsShown,
+  triggerNewGame
+}) => {
   const inputRefs = useRef<(HTMLDivElement | null)[][]>(
     Array.from({ length: MAX_ATTEMPTS }, () => Array(WORD_LENGTH).fill(null))
   );
@@ -97,6 +85,8 @@ const Board: React.FC = () => {
     Array.from({ length: MAX_ATTEMPTS }, () => Array(WORD_LENGTH).fill(""))
   );
   const [attempt, setAttempt] = useState(0);
+  // Word list is only used to randomly select the target word
+  // Player guesses can be any valid dictionary word
   const [targetWord, setTargetWord] = useState<string>(getRandomWord(words));
   const [lockedRows, setLockedRows] = useState<boolean[]>(
     Array(MAX_ATTEMPTS).fill(false)
@@ -115,17 +105,35 @@ const Board: React.FC = () => {
     Array.from({ length: MAX_ATTEMPTS }, () => Array(WORD_LENGTH).fill(""))
   );
   const [showSaveStatus, setShowSaveStatus] = useState(false);
+  const [saveStatusMessage, setSaveStatusMessage] = useState("Game progress saved");
+  const [isSaveError, setIsSaveError] = useState(false);
+  const [storageAvailable, setStorageAvailable] = useState(true);
 
-  // Add state for dark mode
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    // Check if user previously set dark mode preference
-    const savedDarkMode = localStorage.getItem("wordGameDarkMode");
-    // If no saved preference, use system preference
-    if (savedDarkMode === null) {
-      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  // Get user from Supabase context
+  const { user } = useSupabase();
+  const [statisticsSaved, setStatisticsSaved] = useState(false);
+
+  // Check localStorage availability on component mount
+  useEffect(() => {
+    const available = isLocalStorageAvailable();
+    setStorageAvailable(available);
+    
+    if (!available) {
+      const message = getStorageStatusMessage();
+      if (message) {
+        setSaveStatusMessage(message);
+        setIsSaveError(true);
+        setShowSaveStatus(true);
+        
+        // Hide the message after 5 seconds
+        const timer = setTimeout(() => {
+          setShowSaveStatus(false);
+        }, 5000);
+        
+        return () => clearTimeout(timer);
+      }
     }
-    return savedDarkMode === "true";
-  });
+  }, []);
 
   useEffect(() => {
     try {
@@ -140,7 +148,8 @@ const Board: React.FC = () => {
         setKeyColors(savedGame.keyColors || {});
         setGameStatus(savedGame.gameStatus);
         setTargetWord(savedGame.targetWord);
-        setLettersEntered(savedGame.lettersEntered);
+        setLettersEntered(savedGame.lettersEntered || 
+          Array.from({ length: MAX_ATTEMPTS }, () => Array(WORD_LENGTH).fill(false)));
         
         if (savedGame.cellStates) {
           setCellStates(savedGame.cellStates);
@@ -171,6 +180,11 @@ const Board: React.FC = () => {
 
   // Save game state whenever relevant state changes
   useEffect(() => {
+    // Skip save if storage is not available
+    if (!storageAvailable) {
+      return;
+    }
+  
     const gameState: GameState = {
       grid,
       attempt,
@@ -183,10 +197,19 @@ const Board: React.FC = () => {
     };
     
     console.log("Saving game state:", gameState);
-    saveGameState(gameState);
+    const saveSuccessful = saveGameState(gameState);
     
-    // Show save indicator
-    setShowSaveStatus(true);
+    if (saveSuccessful) {
+      // Show success indicator
+      setSaveStatusMessage("Game progress saved");
+      setIsSaveError(false);
+      setShowSaveStatus(true);
+    } else {
+      // Show error indicator
+      setSaveStatusMessage("Failed to save game progress");
+      setIsSaveError(true);
+      setShowSaveStatus(true);
+    }
     
     // Hide save indicator after 1.5 seconds
     const timer = setTimeout(() => {
@@ -194,18 +217,80 @@ const Board: React.FC = () => {
     }, 1500);
     
     return () => clearTimeout(timer);
-  }, [grid, attempt, lockedRows, keyColors, gameStatus, targetWord, lettersEntered, cellStates]);
+  }, [grid, attempt, lockedRows, keyColors, gameStatus, targetWord, lettersEntered, cellStates, storageAvailable]);
 
   // Apply dark mode class to document
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
+    document.documentElement.classList.add("dark");
+    // Save dark mode preference with error handling
+    try {
+      localStorage.setItem("wordGameDarkMode", "true");
+    } catch (e) {
+      console.warn("Could not save dark mode preference:", e);
+      // Non-critical error, can be ignored
     }
-    // Save dark mode preference
-    localStorage.setItem("wordGameDarkMode", String(isDarkMode));
-  }, [isDarkMode]);
+  }, []);
+
+  // Add effect to save game statistics to Supabase when game ends
+  useEffect(() => {
+    const saveStats = async () => {
+      // Only save stats if user is logged in and game has ended
+      if (user && gameStatus && !statisticsSaved) {
+        try {
+          const won = gameStatus === "correct";
+          await saveGameResult(user.id, {
+            grid,
+            attempt,
+            lockedRows,
+            keyColors,
+            gameStatus,
+            targetWord,
+            lettersEntered,
+            cellStates
+          }, won);
+          setStatisticsSaved(true);
+          console.log('Game statistics saved to Supabase');
+        } catch (error) {
+          console.error('Failed to save game statistics:', error);
+        }
+      }
+    };
+
+    saveStats();
+  }, [gameStatus, user, statisticsSaved, grid, attempt, lockedRows, keyColors, targetWord, lettersEntered, cellStates]);
+
+  // Reset statisticsSaved when starting a new game
+  useEffect(() => {
+    if (gameStatus === null) {
+      setStatisticsSaved(false);
+    }
+  }, [gameStatus]);
+
+  // Effect to handle showing instructions from props
+  useEffect(() => {
+    if (showInstructions) {
+      setInstructionsVisible(true);
+      onInstructionsShown?.();
+    }
+  }, [showInstructions, onInstructionsShown]);
+  
+  // Effect to handle new game from header
+  useEffect(() => {
+    if (triggerNewGame !== undefined) {
+      const newWord = getRandomWord(words);
+      setTargetWord(newWord);
+      setGrid(Array.from({ length: MAX_ATTEMPTS }, () => Array(WORD_LENGTH).fill("")));
+      setAttempt(0);
+      setLockedRows(Array(MAX_ATTEMPTS).fill(false));
+      setKeyColors({});
+      setError(null);
+      setGameStatus(null);
+      setLettersEntered(Array.from({ length: MAX_ATTEMPTS }, () => Array(WORD_LENGTH).fill(false)));
+      setCellStates(Array.from({ length: MAX_ATTEMPTS }, () => Array(WORD_LENGTH).fill("")));
+      setShakeRow(null);
+      console.log("New game started with word:", newWord);
+    }
+  }, [triggerNewGame]);
 
   const preventKeyPress = (e: KeyboardEvent) => {
     // Only prevent default for arrow keys to prevent page scrolling
@@ -267,13 +352,19 @@ const Board: React.FC = () => {
         // We'll check if the word exists in the next step, first clear any errors
         setError(null);
         
+        // IMPROVED: Show a "Checking..." message during API call
+        setError("Checking...");
+        
         // This part can remain async
         checkWordExists(guess).then(wordExists => {
           if (!wordExists) {
-            setError("Not in word list");
+            setError("Not found in dictionary");
             triggerShake(attempt);
             return;
           }
+          
+          // Clear the "Checking..." message
+          setError(null);
           
           // Word is valid, process it
           processGuess(guess, attempt);
@@ -289,11 +380,19 @@ const Board: React.FC = () => {
           } else if (attempt + 1 >= MAX_ATTEMPTS) {
             setGameStatus("incorrect");
           }
+        }).catch(error => {
+          // ADDED: Handle explicit API errors
+          console.error("Error validating word:", error);
+          setError("Dictionary check failed - try again");
+          triggerShake(attempt);
         });
         
         keyHandled = true;
       } catch (error) {
         console.error("Error checking guess:", error);
+        // ADDED: Show error message to user
+        setError("Error checking word - try again");
+        triggerShake(attempt);
         keyHandled = false;
       }
       
@@ -381,46 +480,18 @@ const Board: React.FC = () => {
   };
 
   const resetGame = () => {
-    // Get fresh reset data
-    const resetData = resetGameState();
-    
-    // Generate a new target word
-    const newTargetWord = getRandomWord(words);
-    console.log("New target word:", newTargetWord);
-    
-    // Reset all state
-    setGrid(resetData.grid);
+    const newWord = getRandomWord(words);
+    setTargetWord(newWord);
+    setGrid(Array.from({ length: MAX_ATTEMPTS }, () => Array(WORD_LENGTH).fill("")));
     setAttempt(0);
-    setTargetWord(newTargetWord);
-    setLockedRows(resetData.lockedRows);
+    setLockedRows(Array(MAX_ATTEMPTS).fill(false));
     setKeyColors({});
     setError(null);
-    setShakeRow(null);
     setGameStatus(null);
-    setLettersEntered(resetData.lettersEntered);
-    setCellStates(Array.from({ length: MAX_ATTEMPTS }, () => 
-      Array(WORD_LENGTH).fill("")
-    ));
-    
-    // Clear saved game from localStorage
-    localStorage.removeItem("wordGame");
-    
-    console.log("Game reset successfully");
-    
-    // Immediately save the new game state to localStorage
-    setTimeout(() => {
-      const newGameState: GameState = {
-        grid: resetData.grid,
-        attempt: 0,
-        lockedRows: resetData.lockedRows,
-        keyColors: {},
-        gameStatus: null,
-        targetWord: newTargetWord,
-        lettersEntered: resetData.lettersEntered,
-        cellStates: Array.from({ length: MAX_ATTEMPTS }, () => Array(WORD_LENGTH).fill("")),
-      };
-      saveGameState(newGameState);
-    }, 0);
+    setLettersEntered(Array.from({ length: MAX_ATTEMPTS }, () => Array(WORD_LENGTH).fill(false)));
+    setCellStates(Array.from({ length: MAX_ATTEMPTS }, () => Array(WORD_LENGTH).fill("")));
+    setShakeRow(null);
+    console.log("New game started with word:", newWord);
   };
 
   const inputClassNames = (
@@ -439,13 +510,13 @@ const Board: React.FC = () => {
     } else {
       switch (cellState) {
         case "correct":
-          baseClasses += " bg-[#6aaa64] border-[#6aaa64] text-white dark:bg-[#538d4e] dark:border-[#538d4e]";
+          baseClasses += " bg-game-correct text-white dark:bg-game-correct-dark dark:text-white border-game-correct dark:border-game-correct-dark";
           break;
         case "present":
-          baseClasses += " bg-[#c9b458] border-[#c9b458] text-white dark:bg-[#b59f3b] dark:border-[#b59f3b]";
+          baseClasses += " bg-game-present text-white dark:bg-game-present-dark dark:text-white border-game-present dark:border-game-present-dark";
           break;
         case "absent":
-          baseClasses += " bg-[#787c7e] border-[#787c7e] text-white dark:bg-[#3a3a3c] dark:border-[#3a3a3c]";
+          baseClasses += " bg-game-absent text-white dark:bg-game-absent-dark dark:text-white border-game-absent dark:border-game-absent-dark";
           break;
         default:
           baseClasses += " border-stone-800 dark:border-stone-800";
@@ -459,14 +530,9 @@ const Board: React.FC = () => {
     return baseClasses;
   };
 
-  // Toggle dark mode
-  const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
-  };
-
   return (
     <div 
-      className={`word-finder-game no-select flex flex-col min-h-screen w-full items-center p-2 sm:p-4 gap-2 sm:gap-4 ${isDarkMode ? 'dark bg-stone-900 text-white' : 'bg-white text-gray-900'}`}
+      className="word-finder-game no-select flex flex-col min-h-screen w-full items-center p-1 sm:p-2 gap-1 sm:gap-2"
       onMouseDown={(e) => {
         // MODIFIED: Only prevent default for non-input elements
         if (!(e.target as HTMLElement).closest('button, [role="button"], .board-tile')) {
@@ -491,46 +557,13 @@ const Board: React.FC = () => {
         userSelect: 'none',
         WebkitTouchCallout: 'none',
         position: 'relative', // Added for confetti positioning
-        overflow: 'hidden'    // Added to ensure confetti doesn't cause scrollbars
+        overflow: 'hidden',   // Added to ensure confetti doesn't cause scrollbars
+        paddingTop: '0'       // Eliminated top padding completely
       }}
     >
       {/* Show confetti when the user has won */}
       {gameStatus === "correct" && <Confetti />}
       
-      {/* Mobile-optimized header */}
-      <div className="flex flex-col sm:flex-row w-full items-center sm:justify-between mb-1 gap-2">
-        <div className="flex justify-between w-full sm:w-auto">
-          <button
-            onClick={() => setInstructionsVisible(true)}
-            className="py-1 px-2 sm:py-2 sm:px-4 text-sm sm:text-base text-gray-800 dark:text-gray-200 rounded-md font-medium"
-            aria-label="How to Play"
-          >
-            How to Play
-          </button>
-          <h1 className="text-xl sm:text-2xl font-bold text-center">Find Me</h1>
-          <div className="block sm:hidden">
-            <DarkModeToggle
-              isDarkMode={isDarkMode}
-              toggleDarkMode={toggleDarkMode}
-            />
-          </div>
-        </div>
-        <div className="flex gap-2 w-full sm:w-auto justify-end">
-          <div className="hidden sm:block">
-            <DarkModeToggle
-              isDarkMode={isDarkMode}
-              toggleDarkMode={toggleDarkMode}
-            />
-          </div>
-          <button
-            onClick={resetGame}
-            className="py-1 px-3 sm:py-2 sm:px-4 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm sm:text-base font-medium"
-          >
-            New Game
-          </button>
-        </div>
-      </div>
-
       {/* Game status message */}
       {gameStatus && (
         <div 
@@ -561,8 +594,8 @@ const Board: React.FC = () => {
         <div className="text-red-500 dark:text-red-400 text-center mb-1 text-sm sm:text-base">{error}</div>
       )}
 
-      <div className="flex flex-col items-center justify-center space-y-0 flex-grow max-w-full">
-        <div className="board-scale-container flex justify-center items-center py-3 sm:py-4">
+      <div className="flex flex-col items-center justify-center space-y-0 flex-grow max-w-full mt-0 pt-0">
+        <div className="board-scale-container flex justify-center items-center py-0">
           <WordGameBoard
             grid={grid}
             attempt={attempt}
@@ -577,7 +610,7 @@ const Board: React.FC = () => {
         </div>
 
         {/* Space between board and keyboard */}
-        <div className="h-6 sm:h-8"></div>
+        <div className="h-1 sm:h-2"></div>
 
         <div className="keyboard-wrapper w-full max-w-[500px] px-2">
           <Keyboard
@@ -587,12 +620,18 @@ const Board: React.FC = () => {
         </div>
       </div>
 
-      {/* Add SaveStatus component */}
-      <SaveStatus visible={showSaveStatus} />
+      {/* Instructions modal */}
+      <InstructionsModal
+        isOpen={instructionsVisible}
+        onClose={() => setInstructionsVisible(false)}
+      />
       
-      {instructionsVisible && (
-        <InstructionsModal onClose={() => setInstructionsVisible(false)} />
-      )}
+      {/* Save status indicator */}
+      <SaveStatus 
+        visible={showSaveStatus} 
+        message={saveStatusMessage}
+        isError={isSaveError}
+      />
     </div>
   );
 };

@@ -87,10 +87,10 @@ const WordGameBoard: React.FC<WordGameBoardProps> = ({
         maxWidth: 'var(--board-width)',
         aspectRatio: '5/6',
         touchAction: 'manipulation',
-        transform: 'scale(0.95)',
+        transform: 'scale(0.98)',
         margin: '0 auto',
-        padding: 'calc(var(--tile-gap) * 0.8)',
-        gap: 'calc(var(--tile-gap) * 1.2)',
+        padding: 'calc(var(--tile-gap) * 0.3)',
+        gap: 'calc(var(--tile-gap) * 0.8)',
         WebkitUserSelect: 'none',
         userSelect: 'none',
         cursor: 'default'
@@ -108,7 +108,7 @@ const WordGameBoard: React.FC<WordGameBoardProps> = ({
           key={rowIndex} 
           className={`grid grid-cols-5 ${shakeRow === rowIndex ? "animate-shake" : ""} no-select`}
           style={{ 
-            gap: 'calc(var(--tile-gap) * 1.2)',
+            gap: 'calc(var(--tile-gap) * 0.8)',
             WebkitUserSelect: 'none',
             userSelect: 'none',
             cursor: 'default'
