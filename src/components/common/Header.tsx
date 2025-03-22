@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useSupabase } from '../../supabase/SupabaseContext';
 import { signOut } from '../../supabase/supabaseClient';
@@ -10,6 +10,47 @@ interface HeaderProps {
   isGamePage?: boolean;
 }
 
+// CommitInfo type definition
+interface CommitInfo {
+  sha: string;
+  message: string;
+  author: string;
+  date: string;
+}
+
+// CommitTooltip component
+const CommitTooltip: React.FC<{
+  visible: boolean;
+  commit: CommitInfo | null;
+  isLoading: boolean;
+  position?: 'desktop' | 'mobile';
+}> = ({ visible, commit, isLoading, position = 'desktop' }) => {
+  if (!visible) return null;
+  
+  return (
+    <div className={`absolute z-50 bg-white dark:bg-gray-800 shadow-md rounded-md p-3 ${position === 'desktop' ? 'w-72' : 'w-64'} text-sm border border-indigo-100 dark:border-indigo-800/50 transform ${position === 'desktop' ? 'top-full mt-2 -translate-x-1/2 left-1/2' : 'left-0 top-0 -translate-y-full mt-[-8px]'}`}>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-2">
+          <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+          <span className="ml-2 text-gray-600 dark:text-gray-300">Loading commit...</span>
+        </div>
+      ) : commit ? (
+        <div className="space-y-1">
+          <div className="font-medium text-indigo-600 dark:text-indigo-400">{commit.sha}</div>
+          <div className="text-gray-700 dark:text-gray-300">{commit.message}</div>
+          <div className="text-gray-500 dark:text-gray-400 text-xs">
+            {commit.author} on {commit.date}
+          </div>
+        </div>
+      ) : (
+        <div className="text-gray-600 dark:text-gray-300">
+          Could not load commit information
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Header: React.FC<HeaderProps> = ({ onShowInstructions, isGamePage = false }) => {
   const { user } = useSupabase();
   const location = useLocation();
@@ -18,6 +59,15 @@ const Header: React.FC<HeaderProps> = ({ onShowInstructions, isGamePage = false 
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   
+  // Commit info state
+  const [desktopCommitTooltipVisible, setDesktopCommitTooltipVisible] = useState(false);
+  const [mobileCommitTooltipVisible, setMobileCommitTooltipVisible] = useState(false);
+  const [latestCommit, setLatestCommit] = useState<CommitInfo | null>(null);
+  const [isLoadingCommit, setIsLoadingCommit] = useState(false);
+  
+  // Refs for tooltip positioning
+  const desktopCommitButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileCommitButtonRef = useRef<HTMLButtonElement>(null);
   
   // Check if user is admin
   const isAdmin = user?.email?.includes('admin') || false;
@@ -32,6 +82,73 @@ const Header: React.FC<HeaderProps> = ({ onShowInstructions, isGamePage = false 
   const closeAuthModal = () => {
     setAuthModalOpen(false);
   };
+  
+  // Fetch latest commit information
+  const fetchLatestCommit = async () => {
+    if (latestCommit) return; // Don't fetch if we already have data
+    
+    setIsLoadingCommit(true);
+    try {
+      const response = await fetch(
+        'https://api.github.com/repos/SheldonBakker/Wordle-All-the-Time/commits/main'
+      );
+      if (!response.ok) {
+        throw new Error('Failed to fetch commit information');
+      }
+      const data = await response.json();
+      
+      setLatestCommit({
+        sha: data.sha.substring(0, 7),
+        message: data.commit.message,
+        author: data.commit.author.name,
+        date: new Date(data.commit.author.date).toLocaleDateString()
+      });
+    } catch (error) {
+      console.error('Error fetching latest commit:', error);
+    } finally {
+      setIsLoadingCommit(false);
+    }
+  };
+  
+  // Handle toggling the desktop commit tooltip
+  const handleDesktopCommitHover = () => {
+    if (!desktopCommitTooltipVisible) {
+      fetchLatestCommit();
+    }
+    setDesktopCommitTooltipVisible(true);
+  };
+  
+  // Handle toggling the mobile commit tooltip
+  const handleMobileCommitPress = () => {
+    if (!mobileCommitTooltipVisible) {
+      fetchLatestCommit();
+    }
+    setMobileCommitTooltipVisible(!mobileCommitTooltipVisible);
+  };
+  
+  // Hide desktop tooltip when mouse leaves
+  const handleDesktopMouseLeave = () => {
+    setDesktopCommitTooltipVisible(false);
+  };
+  
+  // Close mobile tooltip when clicking outside
+  useEffect(() => {
+    if (!mobileCommitTooltipVisible) return;
+    
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        mobileCommitButtonRef.current && 
+        !mobileCommitButtonRef.current.contains(event.target as Node)
+      ) {
+        setMobileCommitTooltipVisible(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [mobileCommitTooltipVisible]);
   
   // Add dark mode state
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -79,12 +196,37 @@ const Header: React.FC<HeaderProps> = ({ onShowInstructions, isGamePage = false 
             {/* Game Controls */}
             {isGamePage && (
               <div className="flex items-center space-x-3 mr-4">
-                <button
-                  onClick={onShowInstructions}
-                  className="py-1.5 px-4 text-sm font-medium text-indigo-700 dark:text-indigo-300 hover:text-indigo-900 dark:hover:text-indigo-100 transition-colors duration-200 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30"
-                >
-                  How to Play
-                </button>
+                <div className="relative flex items-center">
+                  <button
+                    onClick={onShowInstructions}
+                    className="py-1.5 px-4 text-sm font-medium text-indigo-700 dark:text-indigo-300 hover:text-indigo-900 dark:hover:text-indigo-100 transition-colors duration-200 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30"
+                  >
+                    How to Play
+                  </button>
+                  
+                  {/* Change Icon with Tooltip */}
+                  <div className="relative ml-1">
+                    <button
+                      ref={desktopCommitButtonRef}
+                      onMouseEnter={handleDesktopCommitHover}
+                      onMouseLeave={handleDesktopMouseLeave}
+                      className="p-1.5 bg-white dark:bg-gray-800 border border-indigo-100 dark:border-indigo-800/50 rounded-full text-indigo-500 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors duration-300"
+                      aria-label="View latest changes"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"></path>
+                      </svg>
+                    </button>
+                    
+                    <CommitTooltip
+                      visible={desktopCommitTooltipVisible}
+                      commit={latestCommit}
+                      isLoading={isLoadingCommit}
+                      position="desktop"
+                    />
+                  </div>
+                </div>
               </div>
             )}
             
@@ -237,15 +379,45 @@ const Header: React.FC<HeaderProps> = ({ onShowInstructions, isGamePage = false 
             <div className="px-4 py-3 space-y-3">
               {isGamePage && (
                 <div className="space-y-2">
-                  <button
-                    onClick={() => {
-                      onShowInstructions?.();
-                      setMobileMenuOpen(false);
-                    }}
-                    className="block w-full text-left py-2 px-3 text-sm font-medium text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-lg transition-colors duration-200"
-                  >
-                    How to Play
-                  </button>
+                  <div className="relative">
+                    <div className="flex items-center w-full">
+                      <button
+                        onClick={() => {
+                          onShowInstructions?.();
+                          setMobileMenuOpen(false);
+                        }}
+                        className="flex-grow text-left py-2 px-3 text-sm font-medium text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-lg transition-colors duration-200"
+                      >
+                        How to Play
+                      </button>
+                      
+                      {/* Change Icon for Mobile */}
+                      <button
+                        ref={mobileCommitButtonRef}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMobileCommitPress();
+                        }}
+                        className="p-1.5 ml-2 bg-white dark:bg-gray-700 border border-indigo-100 dark:border-indigo-800/50 rounded-full text-indigo-500 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors duration-300"
+                        aria-label="View latest changes"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="3"></circle>
+                          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"></path>
+                        </svg>
+                      </button>
+                    </div>
+                    
+                    {/* Mobile Commit Tooltip */}
+                    <div className="relative">
+                      <CommitTooltip
+                        visible={mobileCommitTooltipVisible}
+                        commit={latestCommit}
+                        isLoading={isLoadingCommit}
+                        position="mobile"
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
               
