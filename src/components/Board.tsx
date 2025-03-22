@@ -7,7 +7,6 @@ import {
   getRandomWord,
   saveGameState,
   loadGameState,
-  checkWordExists,
   resetGameState,
   GameState,
   getStorageStatusMessage,
@@ -352,40 +351,23 @@ const Board: React.FC<BoardProps> = ({
         // We'll check if the word exists in the next step, first clear any errors
         setError(null);
         
-        // IMPROVED: Show a "Checking..." message during API call
-        setError("Checking...");
+        // Since we're allowing any 5-letter word, we can skip the wordlist check
+        // and directly process the guess
         
-        // This part can remain async
-        checkWordExists(guess).then(wordExists => {
-          if (!wordExists) {
-            setError("Not found in dictionary");
-            triggerShake(attempt);
-            return;
-          }
-          
-          // Clear the "Checking..." message
-          setError(null);
-          
-          // Word is valid, process it
-          processGuess(guess, attempt);
-          
-          const newLockedRows = [...lockedRows];
-          newLockedRows[attempt] = true;
-          setLockedRows(newLockedRows);
-          
-          setAttempt(attempt + 1);
-          
-          if (guess === targetWord) {
-            setGameStatus("correct");
-          } else if (attempt + 1 >= MAX_ATTEMPTS) {
-            setGameStatus("incorrect");
-          }
-        }).catch(error => {
-          // ADDED: Handle explicit API errors
-          console.error("Error validating word:", error);
-          setError("Dictionary check failed - try again");
-          triggerShake(attempt);
-        });
+        // Word is valid, process it
+        processGuess(guess, attempt);
+        
+        const newLockedRows = [...lockedRows];
+        newLockedRows[attempt] = true;
+        setLockedRows(newLockedRows);
+        
+        setAttempt(attempt + 1);
+        
+        if (guess === targetWord) {
+          setGameStatus("correct");
+        } else if (attempt + 1 >= MAX_ATTEMPTS) {
+          setGameStatus("incorrect");
+        }
         
         keyHandled = true;
       } catch (error) {

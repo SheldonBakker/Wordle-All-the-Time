@@ -239,26 +239,9 @@ export const loadGameState = (): GameState | null => {
   }
 };
 
-export const checkWordExists = async (word: string): Promise<boolean> => {
-  try {
-    // Add a timeout to prevent hanging requests
-    const timeout = new Promise<Response>((_, reject) => {
-      setTimeout(() => reject(new Error('Request timed out')), 5000);
-    });
-    
-    const fetchPromise = fetch(
-      `https://api.dictionaryapi.dev/api/v2/entries/en/${word}`
-    );
-    
-    // Race between the fetch and the timeout
-    const response = await Promise.race([fetchPromise, timeout]) as Response;
-    return response.ok;
-  } catch (error) {
-    console.error("Error checking word:", error);
-    // MODIFIED: Return false on errors to be strict about word validation
-    // This prevents invalid words from being accepted during API failures
-    return false;
-  }
+export const checkWordExists = (word: string): boolean => {
+  // Allow any word as long as it's 5 letters
+  return word.length === 5;
 };
 
 export const resetGameState = () => {

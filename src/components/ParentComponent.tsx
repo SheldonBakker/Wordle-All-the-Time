@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import WordGameBoard from "./WordGameBoard";
-import { getRandomWord, checkWordExists } from "./utils/gameUtils";
+import { getRandomWord } from "./utils/gameUtils";
 // Import a sample wordlist for target word selection
 import words from "./data/words.json";
 
@@ -40,52 +40,28 @@ const ParentComponent = () => {
   const currentColumnIndex = useRef<number>(0); // Track the current column index being filled
 
   // Function to handle word validation with dictionary check
-  const validateWord = async (word: string, rowIndex: number) => {
+  const validateWord = (word: string, rowIndex: number) => {
     // First check if the word has 5 letters
     if (word.length === 5) {
-      // Then verify the word exists using the dictionary API
-      try {
-        const isRealWord = await checkWordExists(word);
-        
-        if (isRealWord) {
-          // Word exists in dictionary, lock the row
-          const newLockedRows = [...lockedRows];
-          newLockedRows[rowIndex] = true;
-          setLockedRows(newLockedRows);
-          
-          // Clear any previous errors
-          setError(null);
-          
-          // Check if word matches target
-          if (word === targetWord) {
-            setGameStatus("correct");
-          }
-          
-          // Move to next row
-          currentRowIndex.current += 1;
-          currentColumnIndex.current = 0;
-          
-          // If we've tried all rows and haven't found the correct word
-          if (currentRowIndex.current >= grid.length) {
-            setGameStatus("incorrect");
-          }
-        } else {
-          // Word is not in dictionary
-          setError("Not in word list");
-          setShakeRow(rowIndex);
-          setTimeout(() => setShakeRow(null), 500);
-        }
-      } catch (error) {
-        console.error("Error checking word:", error);
-        // In case of API error, give benefit of doubt and accept the word
-        setError("Dictionary check failed - word accepted");
-        // Continue with the game
-        const newLockedRows = [...lockedRows];
-        newLockedRows[rowIndex] = true;
-        setLockedRows(newLockedRows);
-        
-        // Move to next row
-        currentRowIndex.current += 1;
+      // Allow any 5-letter word, no need to check dictionary
+      // Lock the row
+      const newLockedRows = [...lockedRows];
+      newLockedRows[rowIndex] = true;
+      setLockedRows(newLockedRows);
+      
+      // Move to next row
+      if (rowIndex < 5) {
+        currentColumnIndex.current = 0;
+      }
+      
+      // Check if the word matches the target word
+      if (word.toUpperCase() === targetWord) {
+        setGameStatus("correct");
+      }
+      
+      // If we've tried all rows and haven't found the correct word
+      if (rowIndex === 5 && word.toUpperCase() !== targetWord) {
+        setGameStatus("incorrect");
       }
     } else {
       // Word is not 5 letters
